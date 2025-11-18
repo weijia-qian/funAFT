@@ -18,12 +18,13 @@ knitr::opts_chunk$set(
 An R package for **functional accelerated failure time (AFT) models**:
 
 - **Linear functional AFT (lfAFT)** with a functional predictor entering as  
-  
+
   $$
     \int X(s)\,\beta(s)\,ds
   $$
   
   and estimated via penalized splines.
+  
 - **Additive functional AFT (afAFT)** where the functional predictor enters as  
   
   $$
@@ -49,7 +50,7 @@ install.packages("devtools")
 devtools::install_github("weijia-qian/funAFT")
 ```
 
-```{r setup, message=FALSE, warning=FALSE}
+```{r setup, each = FALSE, message=FALSE, warning=FALSE}
 # install.packages("devtools")
 # devtools::install_github("weijia-qian/funAFT")
 if (requireNamespace("devtools", quietly = TRUE)) {
@@ -190,8 +191,8 @@ df_plot <- data.frame(
 
 ggplot(df_plot, aes(x = s)) +
   geom_ribbon(aes(ymin = wald_lower, ymax = wald_upper, fill = "Wald 95% CI"), alpha = 0.25, na.rm = TRUE) +
-  geom_line(aes(y = beta_hat, color = "Estimated β(s)", linetype = "Estimated β(s)"), size = 1) +
-  geom_line(aes(y = beta_true, color = "True β(s)", linetype = "True β(s)"), size = 1) +
+  geom_line(aes(y = beta_hat, color = "Estimated β(s)", linetype = "Estimated β(s)"), linewidth = 1) +
+  geom_line(aes(y = beta_true, color = "True β(s)", linetype = "True β(s)"), linewidth = 1) +
   labs(
     x = "s",
     y = expression(beta(s)),

@@ -184,8 +184,8 @@ df_plot <- data.frame(
 
 ggplot(df_plot, aes(x = s)) +
   geom_ribbon(aes(ymin = wald_lower, ymax = wald_upper, fill = "Wald 95% CI"), alpha = 0.25, na.rm = TRUE) +
-  geom_line(aes(y = beta_hat, color = "Estimated β(s)", linetype = "Estimated β(s)"), size = 1) +
-  geom_line(aes(y = beta_true, color = "True β(s)", linetype = "True β(s)"), size = 1) +
+  geom_line(aes(y = beta_hat, color = "Estimated β(s)", linetype = "Estimated β(s)"), linewidth = 1) +
+  geom_line(aes(y = beta_true, color = "True β(s)", linetype = "True β(s)"), linewidth = 1) +
   labs(
     x = "s",
     y = expression(beta(s)),
@@ -207,11 +207,6 @@ ggplot(df_plot, aes(x = s)) +
     "True β(s)"      = "dashed"
   )) +
   theme_minimal(base_size = 14)
-#> Warning: Using `size` aesthetic for lines was deprecated in ggplot2 3.4.0.
-#> ℹ Please use `linewidth` instead.
-#> This warning is displayed once every 8 hours.
-#> Call `lifecycle::last_lifecycle_warnings()` to see where this warning was
-#> generated.
 ```
 
 <img src="man/figures/README-lfAFT-beta-plot-1.png" width="100%" />
