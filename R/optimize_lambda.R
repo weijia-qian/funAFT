@@ -6,7 +6,7 @@
 #'
 #' @param lambda_grid Numeric vector of candidate smoothing parameters.
 #'                    Must have length ≥ 1. Each value is evaluated separately
-#'                    by fitting alfAFT model and computing its GCV.
+#'                    by fitting a lfAFT model and computing its GCV.
 #' @param data Optional \code{data.frame} containing all variables in the model.
 #'             If \code{NULL}, variables are searched in the calling environment.
 #' @param y Character. Name of the variable for survival time.

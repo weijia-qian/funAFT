@@ -20,7 +20,7 @@ An R package for **functional accelerated failure time (AFT) models**:
 - **Linear functional AFT (lfAFT)** with a functional predictor entering as  
 
   $$
-    \int X(s)\,\beta(s)\,ds
+    \int_S X(s)\,\beta(s)\,ds
   $$
   
   and estimated via penalized splines.
@@ -28,7 +28,7 @@ An R package for **functional accelerated failure time (AFT) models**:
 - **Additive functional AFT (afAFT)** where the functional predictor enters as  
   
   $$
-    \int F\{X(s), s\}\,ds
+    \int_S F\{s, X(s)\}\,ds
   $$
   
   with an unknown bivariate function \(F(\cdot,\cdot)\), fitted using
@@ -39,30 +39,20 @@ The package currently supports:
 - lfAFT: lognormal and loglogistic AFT models.  
 - afAFT: lognormal AFT family only.
 
-## Installation
+### Installation
 
----
+---------------
 
 You can install the development version of funAFT from [GitHub](https://github.com/weijia-qian/funAFT/) with:
 
-``` r
+```r
 install.packages("devtools")
 devtools::install_github("weijia-qian/funAFT")
 ```
 
-```{r setup, each = FALSE, message=FALSE, warning=FALSE}
-# install.packages("devtools")
-# devtools::install_github("weijia-qian/funAFT")
-if (requireNamespace("devtools", quietly = TRUE)) {
-  devtools::load_all(".")
-} else {
-  message("Install 'devtools' to load the package for development.")
-}
-```
+### Data structure
 
-## Data structure
-
----
+---------------
 
 Both lfAFT and afAFT assume:
 
@@ -82,21 +72,21 @@ head(dat)
 You refer to functional columns either by explicit names (e.g. `"X1", "X2", ...`)
 or via a regex pattern (e.g. `"^X"` with `x_as_regex = TRUE`).
 
----
+### 1. Linear functional AFT model: `fit_lfAFT()`
 
-## 1. Linear functional AFT model: `fit_lfAFT()`
+---------------
 
 The linear functional AFT model assumes
 
 $$
-  \log T_i = \beta_0 + Z_i^\top \beta_Z + \int X_i(s)\,\beta(s)\,ds + \sigma \varepsilon_i,
+  \log T_i = Z_i^\top \gamma + \int_S X_i(s)\,\beta(s)\,ds + \sigma \varepsilon_i,
 $$
 
 with lognormal or loglogistic errors. The coefficient function \(\beta(s)\)
 is represented using spline basis functions, and a roughness penalty is
 applied to control smoothness.
 
-### Automatic selection of the smoothing parameter
+#### Automatic selection of the smoothing parameter
 
 Instead of specifying a single `lambda`, you supply a **grid**
 `lambda_grid`. Internally:
@@ -105,121 +95,70 @@ Instead of specifying a single `lambda`, you supply a **grid**
 - the `lambda` minimizing GCV is chosen
 - the final model is refit at that optimal `lambda`
 
-### Example: simulated lognormal lfAFT
+The default lambda grid is 100 exponentially spaced values from 1e3 to 1e4.
+
+#### Example: fitting loglogistic lfAFT with pupil data
+
+The package includes a sample dataset, `pupil`, containing 123 subjects who completed a pupillary light response test. The dataset includes:
+
+- Functional covariates
+  - `pct_chg_1` to `pct_chg_119`: record the percent change in pupil diameter at 119 equally spaced time points following a light stimulus. Each row represents a subject’s functional pupil response curve $X_i(s)$.
+- Survival outcome
+  - `time_since_use`: survival time (estimated minutes since last cannabis use)
+  - `is_user`: censoring indicator (1 = observed, 0 = right-censored)
+- Scalar covariates
+  - `age_in_years` and `bmi`
+
+In the following example, we show how to fit a log-logistic lfAFT model of time since cannabis use on pupil response curves using `fit_lfAFT()`.
 
 ```{r lfAFT-example, message=FALSE, warning=FALSE}
-set.seed(916)
+library(funAFT)
+data(pupil)
 
-n  <- 100        # subjects
-nS <- 100         # grid points
-s  <- seq(0, 1, length.out = nS)
+sgrid = seq(0, 4, len = 119) # grid of observed points
+lambda_grid = exp(seq(log(1000), log(20000), length.out = 100))
 
-## true coefficient function beta(s)
-beta_true <- sin(2 * pi * s)
-
-## --- simulate smooth functional predictor X(s) ---
-
-# choose a small set of smooth basis functions on [0, 1]
-phi_mat <- cbind(
-  rep(1, nS),                   # intercept / flat component
-  sqrt(2) * cos(pi * s),        # first cosine
-  sqrt(2) * cos(2 * pi * s)     # second cosine
-)
-K <- ncol(phi_mat)
-
-# subject-specific scores (decreasing variance for higher-order components)
-scores <- matrix(rnorm(n * K), nrow = n, ncol = K) %*% diag(c(1.5, 1, 0.5))
-
-# functional covariate matrix: each row is X_i(s) evaluated on the grid
-X <- scores %*% t(phi_mat)      # n x nS
-
-## scalar covariate (centered)
-Z <- rnorm(n, mean = 40, sd = 5)
-Z_c <- scale(Z, center = TRUE, scale = FALSE)
-
-## quadrature weights for integral \int X_i(s) beta(s) ds (trapezoid rule)
-d <- diff(s)
-w <- c(d[1] / 2,
-       (d[-length(d)] + d[-1]) / 2,
-       d[length(d)] / 2)        # length nS
-
-# integral term for each subject: sum_j X_ij * beta(s_j) * w_j
-int_Xbeta <- as.vector(X %*% (beta_true * w))
-# int_Xbeta_c <- int_Xbeta - mean(int_Xbeta) # centering at 0
-
-## linear predictor and lognormal survival times
-mu <- 0.5 + 0.1 * Z_c + int_Xbeta
-Y  <- exp(mu + rnorm(n, sd = 0.5))
-delta <- rbinom(n, size = 1, prob = 0.8)
-
-## assemble data frame
-dat <- data.frame(Y, delta, Z_c)
-colnames(X) <- paste0("X", seq_len(nS))
-dat <- cbind(dat, X)
-
-## fit lfAFT with automatic lambda selection
-lambda_grid <- exp(seq(log(1), log(5000), length.out = 100))
-
-fit_lfAFT <- fit_lfAFT(
-  data        = dat,
-  y           = "Y",
-  delta       = "delta",
-  x           = "^X",          # select X1,...,X50 by regex
-  x_as_regex  = TRUE,
-  z           = "Z_c",
-  family      = "lognormal",
-  k           = 15,
-  lambda_grid = lambda_grid,
-  se          = TRUE
-)
-
-fit_lfAFT$lambda   # optimal lambda
-
+# log-logistic lfAFT model with Wald standard errors and 95% CIs
+fit_lf<- fit_lfAFT(data = pupil, y = "time_since_use", delta = "is_user", x = "^pct_chg_", x_as_regex = TRUE,
+                    z = c("age_in_years", "bmi"), s_grid = sgrid, lambda_grid = lambda_grid, family = "loglogistic", se = TRUE)
 ```
 
-### Inspecting \(\hat\beta(s)\)
+By specifying `boostrap = TRUE`, you can obtain bootstrap confidence intervals. By default use 500 bootstrap replicates (`B = 500`).
 
-```{r lfAFT-beta-plot, fig.height=4}
+```{r}
+# log-logistic lfAFT model with Wald and boostrap 95% CIs
+fit_lf_boot <- fit_lfAFT(data = pupil, y = "time_since_use", delta = "is_user", x = "^pct_chg_", x_as_regex = TRUE,
+                    z = c("age_in_years", "bmi"), s_grid = sgrid, lambda_grid = lambda_grid, family = "loglogistic", 
+                    se = TRUE, bootstrap = TRUE, B = 2000)
+```
+
+#### Inspecting Estimated Coefficient Function \(\hat\beta(s)\)
+
+```{r lfAFT-beta-plot}
 library(ggplot2)
 df_plot <- data.frame(
-  s = fit_lfAFT$s_grid,
-  beta_hat = fit_lfAFT$betaX_hat,
-  beta_true = beta_true,
-  wald_lower = fit_lfAFT$betaX_ci_lower,
-  wald_upper = fit_lfAFT$betaX_ci_upper
+  s = fit_lf_boot$s_grid,
+  beta_hat = fit_lf_boot$betaX_hat,
+  wald_lower = fit_lf_boot$betaX_ci_lower,
+  wald_upper = fit_lf_boot$betaX_ci_upper,
+  boot_lower = fit_lf_boot$betaX_boot_ci_lower,
+  boot_upper = fit_lf_boot$betaX_boot_ci_upper
 )
 
 ggplot(df_plot, aes(x = s)) +
   geom_ribbon(aes(ymin = wald_lower, ymax = wald_upper, fill = "Wald 95% CI"), alpha = 0.25, na.rm = TRUE) +
-  geom_line(aes(y = beta_hat, color = "Estimated β(s)", linetype = "Estimated β(s)"), linewidth = 1) +
-  geom_line(aes(y = beta_true, color = "True β(s)", linetype = "True β(s)"), linewidth = 1) +
-  labs(
-    x = "s",
-    y = expression(beta(s)),
-    title = "Estimated vs True β(s)",
-    fill = "",
-    color = "",
-    linetype = ""
-  ) +
-  scale_fill_manual(values = c(
-    "Bootstrap 95% CI" = "orange",
-    "Wald 95% CI"      = "skyblue"
-  )) +
-  scale_color_manual(values = c(
-    "Estimated β(s)" = "black",
-    "True β(s)"      = "red"
-  )) +
-  scale_linetype_manual(values = c(
-    "Estimated β(s)" = "solid",
-    "True β(s)"      = "dashed"
-  )) +
+  geom_ribbon(aes(ymin = boot_lower, ymax = boot_upper, fill = "Bootstrap 95% CI"), alpha = 0.25, na.rm = TRUE) +
+  geom_line(aes(y = beta_hat, color = "Estimated β(s)"), linewidth = 1) +
+  labs(x = "Seconds since light stimulus (s)", y = expression(beta(s)), title = "Estimated Coefficient Function β(s)", fill = "", color = "") +
+  scale_fill_manual(values = c("Bootstrap 95% CI" = "#FDE725", "Wald 95% CI" = "#7AD151")) +
+  scale_color_manual(values = c("Estimated β(s)" = "grey20")) +
   theme_minimal(base_size = 14)
 ```
 
-### Prediction with `predict_lfAFT()`
+#### Prediction with `predict_lfAFT()`
 
 ```r
-newdata <- dat[1:5, ]
+newdata <- pupil[1:5, ]
 
 # linear predictor mu
 mu_new <- predict_lfAFT(fit_lf, newdata, type = "link")
@@ -228,32 +167,30 @@ mu_new <- predict_lfAFT(fit_lf, newdata, type = "link")
 tmed_new <- predict_lfAFT(fit_lf, newdata, type = "response")
 
 # survival probabilities at t = 1, 2, 5
-S_new <- predict_lfAFT(fit_lf, newdata,
-                       type  = "survival",
-                       times = c(1, 2, 5))
+S_new <- predict_lfAFT(fit_lf, newdata, type  = "survival", times = c(1, 2, 5))
 ```
 
----
+### 2. Additive functional AFT model: `fit_afAFT()`
 
-## 2. Additive functional AFT model: `fit_afAFT()`
+---------------
 
 The additive functional AFT model allows the functional predictor to enter
 through a more flexible bivariate function:
 
 $$
-  \log T_i = \alpha_0 + Z_i^\top \alpha_Z +
-    \int F\{X_i(s), s\}\,ds + \sigma \varepsilon_i,
+  \log T_i = Z_i^\top \gamma +
+    \int_S F\{s, X_i(s)\}\,ds + \sigma \varepsilon_i,
 $$
 
 where \(F(\cdot,\cdot)\) is unknown and estimated using a tensor-product
 smooth via **mgcv**.
 
-### Implementation sketch
+#### Implementation details
 
 - Build matrices  
-  - `X`: functional covariate (n × nS)  
-  - `S`: replicated grid (n × nS)  
-  - `L`: quadrature weights (n × nS) via the trapezoid rule
+  - `X`: functional covariate (n × p)  
+  - `S`: replicated grid of observed points (n × p)  
+  - `L`: quadrature weights (n × p) via the trapezoid rule
 - Fit a tensor-product smooth
   
   $$
@@ -263,98 +200,54 @@ smooth via **mgcv**.
   where `mc = c(FALSE, TRUE)` imposes marginal identifiability constraints
   in the functional covariate direction.
 
-### Example: lognormal afAFT
+#### Example: fitting lognormal afAFT model with pupil data
 
 ```{r afAFT-example, message=FALSE, warning=FALSE}
-set.seed(916)
-
-n  <- 100         # subjects
-nS <- 100         # grid points
-s  <- seq(0, 1, length.out = nS)
-
-## --- simulate smooth functional predictor X(s) ---
-
-# basis functions on [0, 1]
-phi_mat <- cbind(
-  rep(1, nS),                    # flat component
-  sqrt(2) * cos(pi * s),         # first cosine
-  sqrt(2) * cos(2 * pi * s)      # second cosine
-)
-K <- ncol(phi_mat)
-
-# subject-specific scores (decreasing variance)
-scores <- matrix(rnorm(n * K), nrow = n, ncol = K) %*% diag(c(1.5, 1, 0.5))
-
-# functional covariate matrix: each row is X_i(s) on the grid
-X <- scores %*% t(phi_mat)       # n x nS
-
-## --- scalar covariate (centered) ---
-Z  <- rnorm(n, mean = 40, sd = 5)
-Z_c <- scale(Z, center = TRUE, scale = FALSE)[, 1]
-
-## --- quadrature weights on [0, 1] (trapezoid rule) ---
-d <- diff(s)
-w <- c(d[1] / 2,
-       (d[-length(d)] + d[-1]) / 2,
-       d[length(d)] / 2)         # length nS
-
-## --- true bivariate effect F(x, s) = x * (1 + s) ---
-
-F_fun <- function(x, s) {
-  x * (1 + s)
-}
-
-# evaluate F(X_i(s), s) for all i, s
-S_mat <- matrix(s, nrow = n, ncol = nS, byrow = TRUE)
-F_mat <- F_fun(X, S_mat)         # n x nS
-
-# integral term ∫ F(X_i(s), s) ds ≈ sum_j F_ij * w_j
-int_F <- as.vector(F_mat %*% w)
-
-## --- linear predictor and lognormal survival times ---
-mu    <- 0.5 + 0.1 * Z_c + int_F
-Y     <- exp(mu + rnorm(n, sd = 0.5))
-delta <- rbinom(n, size = 1, prob = 0.8)
-
-## --- assemble data frame ---
-dat <- data.frame(
-  Y      = Y,
-  delta  = delta,
-  Z_c    = Z_c
-)
-colnames(X) <- paste0("X", seq_len(nS))
-dat <- cbind(dat, X)
-
-## --- fit additive functional AFT (lognormal) ---
-fit_afAFT <- fit_afAFT(
-  data   = dat,
-  y      = "Y",
-  delta  = "delta",
-  x      = "^X",          # pick up X1, ..., X_nS by regex
-  x_as_regex = TRUE,
-  z      = "Z_c",
-  family = "lognormal",   # afAFT supports lognormal AFT
-  k      = c(10, 10),
-  s_grid = s,
-  basis  = c("cr", "cr")
-)
-
+fit_af <- fit_afAFT(data = pupil, y="time_since_use", delta = "is_user", x = "^pct_chg_", x_as_regex = TRUE,
+                    z = c("age_in_years", "bmi"), s_grid = sgrid)
 ```
 
+#### Estimated coefficient surface $\hat F\{s, X(s)\}$
 
-### Prediction with `predict_afAFT()`
+```{r afAFT-plot}
+xgrid <- as.matrix(seq(-80, 20, len = 119), ncol = 1)
+sgrid <- fit_af$s_grid
+df_pred <- expand.grid(X = xgrid, S = sgrid) 
+df_pred$L <- 1
+df_pred$age_in_years <- mean(pupil$age_in_years)
+df_pred$bmi <- mean(pupil$bmi)
+pred_smooth <- predict(fit_af, newdata = df_pred, type = "terms", terms = "ti(S,X):L", se = TRUE)
+df_pred$fit <- pred_smooth$fit
+
+ggplot(df_pred, aes(x = S, y = X, fill = fit)) +
+  geom_raster(interpolate = TRUE) +
+  labs(
+    x = "Seconds since light stimulus (s)",
+    y = "Percent change in pupil size (x)",
+    fill = "F(s, x)"
+  ) +
+  scale_fill_distiller(palette = "RdBu") +
+  theme_minimal(base_size = 14)
+```
+
+#### Prediction with `predict_afAFT()`
+
+Same usage as `predict_lfAFT()`.
 
 ```r
-new_af <- dat_af[1:5, ]
+# linear predictor mu
+eta_af <- predict_afAFT(fit_af, newdata, type = "link")
 
-eta_af <- predict_afAFT(fit_af, new_af, type = "link")
-tmed_af <- predict_afAFT(fit_af, new_af, type = "response")
-S_af <- predict_afAFT(fit_af, new_af, type = "survival", times = c(1, 2, 5))
+# median survival time exp(mu)
+tmed_af <- predict_afAFT(fit_af, newdata, type = "response")
+
+# survival probabilities at t = 1, 2, 5
+S_af <- predict_afAFT(fit_af, newdata, type = "survival", times = c(1, 2, 5))
 ```
 
----
+### References
 
-## References
+---------------
 
 - Qian, W., Cui, E., Brooks-Russell, A., & Wrobel, J. (2025).  
   *Functional Accelerated Failure Time Models for Predicting Time Since Cannabis Use.*  

@@ -1,5 +1,5 @@
 Package: funAFT
-Title: Functional Accelerated Failure Time Model
+Title: Functional Accelerated Failure Time Models
 Version: 0.0.0.9000
 Authors@R: c(
     person(given = "Weijia", family = "Qian", 
