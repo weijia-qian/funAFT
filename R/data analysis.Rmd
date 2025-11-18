@@ -1,0 +1,432 @@
+---
+title: "Data Analysis"
+author: "Weijia Qian"
+date: "2025-11-10"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(caret)
+library(tictoc)
+library(tidyverse)
+library(patchwork)
+library(cowplot)
+library(refund)
+library(survival)
+```
+
+```{r}
+data("data_analysis")
+my_colors <- c(
+  "FTTM" = "#440154",
+  # "mgcv LFCM" = "#414487",
+  "LFCM" = "#2A788E",
+  "loglogistic lfAFT" = "#7AD151",
+  "lognormal lfAFT" = "#FDE725",
+  "AFCM" = "#E03C8A",
+  "lognormal afAFT" = "#B481BB",
+  "functional logistic" = "#2EA9DF"
+)
+
+theme_set(theme_minimal() + 
+            theme(legend.position = "bottom",
+                  # axis.text = element_text(size = 15),
+                  # axis.title = element_text(size = 15),
+                  # legend.title = element_text(size = 15),
+                  # legend.text = element_text(size = 15)
+                  ))
+```
+
+```{r}
+tic()
+fit1 <- fit_lfAFT(data = pupil, y="time_since_use", delta = "is_user", x = "^pct_chg_", x_as_regex = TRUE,
+                                z = c("age_in_years", "bmi"), family = "loglogistic", s_grid = sgrid1, bootstrap = TRUE,
+                  lambda_grid = exp(seq(log(1000), log(20000), length.out = 100)))
+time_stamp <- toc(quiet = TRUE)
+time_fit1 <- time_stamp$toc - time_stamp$tic
+
+tic()
+fit2 <- fit_lfAFT(data = pupil, y="time_since_use", delta = "is_user", x = "^pct_chg_", x_as_regex = TRUE,
+                                z = c("age_in_years", "bmi"), family = "lognormal", s_grid = sgrid1, bootstrap = TRUE,
+                  lambda_grid = exp(seq(log(1000), log(20000), length.out = 100)))
+time_stamp <- toc(quiet = TRUE)
+time_fit2 <- time_stamp$toc - time_stamp$tic
+
+fit3 <- fit_lfAFT(data = df_post2_r, y="time_since_use", delta = "is_user", x = "^pct_chg_", x_as_regex = TRUE,
+                                z = c("age_in_years", "bmi"), family = "loglogistic", s_grid = sgrid2, bootstrap = TRUE,
+                  lambda_grid = exp(seq(log(1000), log(20000), length.out = 100)))
+
+fit4 <- fit_lfAFT(data = df_post2_r, y="time_since_use", delta = "is_user", x = "^pct_chg_", x_as_regex = TRUE,
+                                z = c("age_in_years", "bmi"), family = "lognormal", s_grid = sgrid2, bootstrap = TRUE,
+                  lambda_grid = exp(seq(log(1000), log(20000), length.out = 100)))
+
+plot_coef1 <- data.frame(time = sgrid1,
+                         coef_faft2 = fit1$betaX_hat,
+                         coef_faft2_lb = fit1$betaX_boot_ci_lower,
+                         coef_faft2_ub = fit1$betaX_boot_ci_upper,
+                         coef_laft = fit2$betaX_hat,
+                         coef_laft_lb = fit2$betaX_boot_ci_lower,
+                         coef_laft_ub = fit2$betaX_boot_ci_upper)
+
+plot_coef2 <- data.frame(time = sgrid2,
+                         coef_faft2 = fit3$betaX_hat,
+                         coef_faft2_lb = fit3$betaX_boot_ci_lower,
+                         coef_faft2_ub = fit3$betaX_boot_ci_upper,
+                         coef_laft = fit4$betaX_hat,
+                         coef_laft_lb = fit4$betaX_boot_ci_lower,
+                         coef_laft_ub = fit4$betaX_boot_ci_upper)
+
+p_coef1 <- ggplot(data = plot_coef1, aes(x = time)) +
+  geom_line(aes(y = coef_faft2, color = "loglogistic lfAFT"), size = 1) +
+  geom_line(aes(y = coef_laft, color = "lognormal lfAFT"), size = 1) +
+  geom_ribbon(aes(ymin = coef_faft2_lb, ymax = coef_faft2_ub, fill = "loglogistic lfAFT"), alpha = 0.3) +
+  geom_ribbon(aes(ymin = coef_laft_lb, ymax = coef_laft_ub, fill = "lognormal lfAFT"), alpha = 0.3) +
+  scale_color_manual(values = my_colors,
+                     breaks = c("lognormal lfAFT", "loglogistic lfAFT")) +
+  scale_fill_manual(values = my_colors,
+                    breaks = c("lognormal lfAFT", "loglogistic lfAFT")) +
+  ylim(-0.16, 0.16) +
+  labs(
+    x = NULL,
+    y = expression(beta~"(s)"),
+    title = "Assessment 1",
+    color = "Model",
+    fill = "Model"
+  )
+
+p_coef2 <- ggplot(data = plot_coef2, aes(x = time)) +
+  geom_line(aes(y = coef_faft2, color = "loglogistic lfAFT"), size = 1) +
+  geom_line(aes(y = coef_laft, color = "lognormal lfAFT"), size = 1) +
+  geom_ribbon(aes(ymin = coef_faft2_lb, ymax = coef_faft2_ub, fill = "loglogistic lfAFT"), alpha = 0.3) +
+  geom_ribbon(aes(ymin = coef_laft_lb, ymax = coef_laft_ub, fill = "lognormal lfAFT"), alpha = 0.3) +
+  scale_color_manual(values = my_colors,
+                     breaks = c("lognormal lfAFT", "loglogistic lfAFT")) +
+  scale_fill_manual(values = my_colors,
+                    breaks = c("lognormal lfAFT", "loglogistic lfAFT")) +
+  ylim(-0.16, 0.16) +
+  labs(
+    x = NULL,
+    y = expression(beta~"(s)"),
+    title = "Assessment 2",
+    color = "Model",
+    fill = "Model"
+  )
+
+p_coef <- p_coef1 + p_coef2 +
+  plot_layout(guides = 'collect', axes = "collect")
+
+# get legend
+leg <- cowplot::get_legend(p_coef + theme(legend.position = "top"))
+
+p_coef <- p_coef1 + p_coef2 +
+  plot_layout(guides = 'collect', axes = "collect") &
+  theme(
+    legend.position = "none"
+  )
+```
+
+```{r}
+s    <- plot_coef1$time
+beta <- plot_coef1$coef_faft2
+
+f_beta <- splinefun(plot_coef1$time, plot_coef1$coef_faft2, method = "natural")
+
+int_beta <- integrate(f_beta, lower = min(s), upper = max(s))$value
+val <- exp(int_beta)
+val
+```
+
+```{r}
+tic()
+fit5 <- fit_afAFT(data = pupil, y="time_since_use", delta = "is_user", x = "^pct_chg_", x_as_regex = TRUE,
+                                z = c("age_in_years", "bmi"), s_grid = sgrid1)
+time_stamp <- toc(quiet = TRUE)
+time_fit5 <- time_stamp$toc - time_stamp$tic
+
+fit6 <- fit_afAFT(data = df_post2_r, y="time_since_use", delta = "is_user", x = "^pct_chg_", x_as_regex = TRUE,
+                                z = c("age_in_years", "bmi"), s_grid = sgrid2)
+
+xgrid <- as.matrix(seq(-80, 20, len = 119), ncol = 1)
+sgrid <- seq(0, 4, len = 119)
+df_pred <- expand.grid(X = xgrid, S = sgrid) 
+df_pred$L = 1
+df_pred$age_in_years = 32
+df_pred$bmi = 25.3
+xgrid2 <- as.matrix(seq(-80, 20, len = 120), ncol = 1)
+sgrid2 <- seq(0, 4, len = 120)
+df_pred2 <- expand.grid(X = xgrid2, S = sgrid2)
+df_pred2$L = 1
+df_pred2$age_in_years = 31.968
+df_pred2$bmi = 25.2
+pred_smooth_aaft <- predict(fit5, newdata = df_pred, type = "terms", terms = "ti(S,X):L", se = TRUE)
+pred_smooth_aaft2 <- predict(fit6, newdata = df_pred2, type = "terms", terms = "ti(S,X):L", se = TRUE)
+df_contour <- df_pred %>%
+  mutate(fit = pred_smooth_aaft$fit) 
+df_contour2 <- df_pred2 %>%
+  mutate(fit = pred_smooth_aaft2$fit) 
+
+# common_limits <- range(c(df_contour$fit, df_contour2$fit), na.rm = TRUE)
+common_limits <- c(-7.8, 7.8)
+# assessment 1
+p_aaft1 <- ggplot(df_contour, aes(x = S, y = X, fill = fit)) +
+  geom_raster(interpolate = TRUE) +
+  labs(
+    x = "Seconds since light stimulus (s)",
+    y = "Percent change in pupil size (x)",
+    fill = "F(s, x)"
+  ) +
+  scale_fill_distiller(
+    palette = "RdBu",
+    limits = common_limits
+  ) +
+  guides(fill = guide_colorbar(
+    barwidth = unit(8, "cm"), barheight = unit(0.5, "cm")
+  ))
+
+# assessment 2
+p_aaft2 <- ggplot(df_contour2, aes(x = S, y = X, fill = fit)) +
+  geom_raster(interpolate = TRUE) +
+  labs(
+    x = "Seconds since light stimulus (s)",
+    y = "Percent change in pupil size (x)",
+    fill = "F(s, x)"
+  ) +
+  scale_fill_distiller(
+    palette = "RdBu",
+    limits = common_limits
+  ) +
+  theme_minimal() +
+  guides(fill = guide_colorbar(
+    barwidth = unit(8, "cm"), barheight = unit(0.5, "cm")
+  ))
+
+p_surface <- p_aaft1 + p_aaft2 +
+  plot_layout(guides = 'collect', axes = "collect") &
+  theme(legend.position = "bottom")
+
+p_comb <- plot_grid(leg,  p_coef / p_surface, ncol = 1, rel_heights = c(0.1, 1))
+p_comb
+fig_dir <- "/Users/weijia/Research/FDA/Drafts"
+ggsave(file.path(fig_dir, "fig_data_coef.jpeg"), p_comb, width = 8, height = 6, dpi = 500)
+```
+
+```{r}
+pupil$X_mat <- as.matrix(pupil[, grep("^pct_chg_", colnames(pupil))])
+pupil$is_user_60 <- ifelse(pupil$time_since_use <= 60, 1, 0)
+pupil$is_user_120 <- ifelse(pupil$time_since_use <= 120, 1, 0)
+df_post2_r$X_mat <- as.matrix(df_post2_r[, grep("^pct_chg_", colnames(df_post2_r))])
+df_post2_r$is_user_60 <- ifelse(df_post2_r$time_since_use <= 60, 1, 0)
+df_post2_r$is_user_120 <- ifelse(df_post2_r$time_since_use <= 120, 1, 0)
+
+fit1.logistic = pfr(is_user_60 ~ age_in_years + bmi + lf(X_mat, argvals = sgrid1), 
+                    family = binomial(), method = "REML", data = pupil)
+fit2.logistic = pfr(is_user_120 ~ age_in_years + bmi + lf(X_mat, argvals = sgrid2), 
+                    family = binomial(), method = "REML", data = df_post2_r)
+```
+
+```{r}
+set.seed(916) 
+n_folds <- 10 # number of folds
+### variables that store the c-index and Brier's score in each calculation
+Brier_faft <- Brier_faft2 <- Brier_aaft <- Brier_logistic <- rep(0, n_folds)
+### use "createFolds" function from "caret" package to divide real data into n_folds folds
+fold <- createFolds(pupil$time_since_use, k = n_folds, list = FALSE)
+tgrid <- seq(0.1, 120, len = 500) 
+
+for(k in 1:n_folds){
+    ## split train and test data
+    train_data <- pupil[-which(fold == k),]
+    test_data <- pupil[which(fold == k),]
+    
+    train_data$X_mat <- as.matrix(train_data[, grep("^pct_chg_", colnames(train_data))])
+    test_data$X_mat <- as.matrix(test_data[, grep("^pct_chg_", colnames(test_data))])
+    
+    ## survival time and status
+    time_test   <- test_data$time_since_use
+    event_test <- test_data$is_user
+    time_train   <- train_data$time_since_use
+    event_train <- train_data$is_user
+    
+    ## fit each model using train data
+    fit_faft <- fit_lfAFT(data = train_data, y="time_since_use", delta = "is_user", x = "^pct_chg_", x_as_regex = TRUE,
+                          z = c("age_in_years", "bmi"), family = "lognormal", s_grid = sgrid1,
+                          lambda_grid = exp(seq(log(1000), log(20000), length.out = 100)))
+
+    fit_faft2 <- fit_lfAFT(data = train_data, y="time_since_use", delta = "is_user", x = "^pct_chg_", x_as_regex = TRUE,
+                          z = c("age_in_years", "bmi"), family = "loglogistic", s_grid = sgrid1,
+                          lambda_grid = exp(seq(log(1000), log(20000), length.out = 100)))
+    
+    fit_aaft <- fit_afAFT(data = train_data, y="time_since_use", delta = "is_user", x = "^pct_chg_", x_as_regex = TRUE,
+                                z = c("age_in_years", "bmi"), s_grid = sgrid1)
+    
+    fit_logistic = pfr(is_user_120 ~ age_in_years + bmi + lf(X_mat, argvals = sgrid1), 
+                    family = binomial(), method = "REML", data = train_data)
+
+    ## calculate the cross-validated brier score
+    S_faft <- predict_lfAFT(fit_faft, test_data, type = "survival", times = tgrid)
+    S_faft2 <- predict_lfAFT(fit_faft2, test_data, type = "survival", times = tgrid)
+    S_aaft <- predict_afAFT(fit_aaft, test_data, type = "survival", times = tgrid)
+    
+    Brier_faft[k]  <- cal_Brier(S_faft,  time_test, event_test, time_train, event_train, tau = 120)
+    Brier_faft2[k] <- cal_Brier(S_faft2, time_test, event_test, time_train, event_train, tau = 120)
+    Brier_aaft[k]  <- cal_Brier(S_aaft,  time_test, event_test, time_train, event_train, tau = 120)
+    
+    # Brier score for functional logistic regression
+    pred_p <- predict(fit_logistic, newdata = test_data, type = "response")
+    Brier_logistic[k] <- mean((pred_p - test_data$is_user_120)^2)
+    
+}
+
+df_Brier <- data.frame(Model = c("lognormal lfAFT", "loglogistic lfAFT",  "mgcv afAFT", "Functional Logistic"),
+                       Brier_score = c(mean(Brier_faft), mean(Brier_faft2), mean(Brier_aaft), mean(Brier_logistic)))
+print(df_Brier)
+```
+
+```{r}
+set.seed(916) 
+n_folds <- 10 # number of folds
+### variables that store the c-index and Brier's score in each calculation
+Brier2_faft <- Brier2_faft2 <- Brier2_aaft <- Brier2_logistic <- rep(0, n_folds)
+### use "createFolds" function from "caret" package to divide real data into n_folds folds
+fold <- createFolds(pupil$time_since_use, k = n_folds, list = FALSE)
+tgrid <- seq(0.1, 120, len = 500) 
+
+for(k in 1:n_folds){
+    ## split train and test data
+    train_data <- df_post2_r[-which(fold == k),]
+    test_data <- df_post2_r[which(fold == k),]
+    
+    train_data$X_mat <- as.matrix(train_data[, grep("^pct_chg_", colnames(train_data))])
+    test_data$X_mat <- as.matrix(test_data[, grep("^pct_chg_", colnames(test_data))])
+    
+    ## survival time and status
+    time_test   <- test_data$time_since_use
+    event_test <- test_data$is_user
+    time_train   <- train_data$time_since_use
+    event_train <- train_data$is_user
+    
+    ## fit each model using train data
+    fit_faft <- fit_lfAFT(data = train_data, y="time_since_use", delta = "is_user", x = "^pct_chg_", x_as_regex = TRUE,
+                          z = c("age_in_years", "bmi"), family = "lognormal", s_grid = sgrid2,
+                          lambda_grid = exp(seq(log(1000), log(20000), length.out = 100)))
+
+    fit_faft2 <- fit_lfAFT(data = train_data, y="time_since_use", delta = "is_user", x = "^pct_chg_", x_as_regex = TRUE,
+                          z = c("age_in_years", "bmi"), family = "loglogistic", s_grid = sgrid2,
+                          lambda_grid = exp(seq(log(1000), log(20000), length.out = 100)))
+    
+    fit_aaft <- fit_afAFT(data = train_data, y="time_since_use", delta = "is_user", x = "^pct_chg_", x_as_regex = TRUE,
+                                z = c("age_in_years", "bmi"), s_grid = sgrid2)
+    
+    fit_logistic = pfr(is_user_120 ~ age_in_years + bmi + lf(X_mat, argvals = sgrid2), 
+                    family = binomial(), method = "REML", data = train_data)
+
+    ## calculate the cross-validated brier score
+    S_faft <- predict_lfAFT(fit_faft, test_data, type = "survival", times = tgrid)
+    S_faft2 <- predict_lfAFT(fit_faft2, test_data, type = "survival", times = tgrid)
+    S_aaft <- predict_afAFT(fit_aaft, test_data, type = "survival", times = tgrid)
+    
+    Brier2_faft[k] <-  cal_Brier(S_faft,  time_test, event_test, time_train, event_train, tau = 120)
+    Brier2_faft2[k] <-  cal_Brier(S_faft2,  time_test, event_test, time_train, event_train, tau = 120)
+    Brier2_aaft[k] <-  cal_Brier(S_aaft,  time_test, event_test, time_train, event_train, tau = 120)
+    
+    # Brier score for functional logistic regression
+    pred_p <- predict(fit_logistic, newdata = test_data, type = "response")
+    Brier2_logistic[k] <- mean((pred_p - test_data$is_user_120)^2)
+    
+}
+
+df_Brier2 <- data.frame(Model = c("lognormal lfAFT", "loglogistic lfAFT",  "mgcv afAFT", "Functional Logistic"),
+                       Brier_score = c(mean(Brier2_faft), mean(Brier2_faft2), mean(Brier2_aaft), mean(Brier2_logistic)))
+print(df_Brier2)
+```
+
+```{r}
+cal_Brier <- function(S,                      # n x length(tgrid) matrix of predicted survival probs
+                      time_test = time_test, event_test = event_test,  # test data (times, event indicators)
+                      time_train = time_train, event_train = event_train,# training data (for censoring KM)
+                      tau = NULL,             # upper time limit for integration
+                      ngrid = 500) {         # number of grid points for tgrid
+
+  #-----------------------------
+  # 1. Determine evaluation horizon tau and tgrid
+  #-----------------------------
+  if (is.null(tau)) {
+    # Default: integrate up to the largest observed event time in test data
+    tau <- max(time_test[event_test == 1])
+  }
+  tgrid <- seq(0.1, tau, length.out = ngrid)
+
+  #-----------------------------
+  # 2. KM estimate of censoring distribution G(t)
+  #-----------------------------
+  Surv_cens <- survival::Surv(time = time_train, event = 1 - event_train)
+  fitG <- survival::survfit(Surv_cens ~ 1)
+
+  # helper: returns G_hat(t)
+  G_hat <- function(t) {
+    # summary() returns a list with $time and $surv
+    sfit <- summary(fitG, times = t, extend = TRUE)
+    sfit$surv
+  }
+
+  #-----------------------------
+  # 3. Evaluation times (event times in test <= tau)
+  #-----------------------------
+  utimes <- sort(unique(time_test[event_test == 1]))
+  utimes <- utimes[utimes <= tau]
+
+  n <- nrow(S)
+  Brier.t <- numeric(length(utimes))
+
+  #-----------------------------
+  # 4. Compute time-specific Brier scores
+  #-----------------------------
+  for (k in seq_along(utimes)) {
+    ti <- utimes[k]
+
+    # survival probability at current time
+    idx_t <- max(which(tgrid <= ti))
+    surv.prob <- S[, idx_t]
+
+    # groups
+    alive <- which(time_test > ti)
+    event <- which(time_test <= ti & event_test == 1)
+
+    tmp <- 0
+
+    # Alive at t: Y=1
+    if (length(alive) > 0) {
+      Gt <- G_hat(ti)
+      tmp <- tmp + sum((1 - surv.prob[alive])^2 / Gt)
+    }
+
+    # Event before t: Y=0
+    if (length(event) > 0) {
+      G_Ti <- G_hat(time_test[event])
+      tmp <- tmp + sum((surv.prob[event])^2 / G_Ti)
+    }
+
+    Brier.t[k] <- tmp / n
+  }
+
+  #-----------------------------
+  # 5. Trapezoidal integration for iBrier
+  #-----------------------------
+  area <- 0
+  prev_t <- 0
+  prev_B <- 0
+  for (k in seq_along(utimes)) {
+    t <- utimes[k]
+    B <- Brier.t[k]
+    area <- area + 0.5 * (prev_B + B) * (t - prev_t)
+    prev_t <- t
+    prev_B <- B
+  }
+
+  iBrier <- area / tau
+  return(iBrier)
+}
+
+```
+
