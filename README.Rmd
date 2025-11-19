@@ -9,7 +9,7 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
   fig.path = "man/figures/README-",
-  out.width = "100%"
+  out.width = "80%"
 )
 ```
 
@@ -17,22 +17,9 @@ knitr::opts_chunk$set(
 
 An R package for **functional accelerated failure time (AFT) models**:
 
-- **Linear functional AFT (lfAFT)** with a functional predictor entering as  
-
-  $$
-    \int_S X(s)\,\beta(s)\,ds
-  $$
+- **Linear functional AFT (lfAFT)** with a functional predictor entering as $$\int_S X(s)\,\beta(s)\,ds$$ and estimated via penalized splines.
   
-  and estimated via penalized splines.
-  
-- **Additive functional AFT (afAFT)** where the functional predictor enters as  
-  
-  $$
-    \int_S F\{s, X(s)\}\,ds
-  $$
-  
-  with an unknown bivariate function \(F(\cdot,\cdot)\), fitted using
-  tensor-product smooths in **mgcv**.
+- **Additive functional AFT (afAFT)** where the functional predictor enters as $$\int_S F\{s, X(s)\}\,ds$$ with an unknown bivariate function \(F(\cdot,\cdot)\), fitted using tensor-product smooths in **mgcv**.
 
 The package currently supports:
 
@@ -59,7 +46,7 @@ Both lfAFT and afAFT assume:
 - `Y`: positive survival times
 - `delta`: censoring indicator (1 = observed event, 0 = right-censored)
 - `X`: **wide functional covariate matrix** (one row per subject, one column per grid point)
-- (optional) `Z`: scalar covariates
+- `Z`: scalar covariates (optional)
 
 For convenience, you typically store everything in one `data.frame`:
 
@@ -86,16 +73,15 @@ with lognormal or loglogistic errors. The coefficient function \(\beta(s)\)
 is represented using spline basis functions, and a roughness penalty is
 applied to control smoothness.
 
-#### Automatic selection of the smoothing parameter
+#### Automatic selection of the smoothing parameter $\lambda$
 
-Instead of specifying a single `lambda`, you supply a **grid**
-`lambda_grid`. Internally:
+The smoothing parameter $\lambda$ is selected by conducting a grid search over `lambda_grid`. Internally:
 
-- `optimize_lambda()` evaluates GCV for each candidate `lambda`
-- the `lambda` minimizing GCV is chosen
-- the final model is refit at that optimal `lambda`
+- `optimize_lambda()` evaluates GCV score for each candidate $\lambda$ in the `lambda_grid`
+- the $\lambda$ minimizing GCV is chosen
+- the final model is refit at that optimal $\lambda$
 
-The default lambda grid is 100 exponentially spaced values from 1e3 to 1e4.
+`lambda_grid` can be user-supplied or by default consists of 100 exponentially spaced values from 1e3 to 1e4.
 
 #### Example: fitting loglogistic lfAFT with pupil data
 
@@ -148,7 +134,7 @@ df_plot <- data.frame(
 ggplot(df_plot, aes(x = s)) +
   geom_ribbon(aes(ymin = wald_lower, ymax = wald_upper, fill = "Wald 95% CI"), alpha = 0.25, na.rm = TRUE) +
   geom_ribbon(aes(ymin = boot_lower, ymax = boot_upper, fill = "Bootstrap 95% CI"), alpha = 0.25, na.rm = TRUE) +
-  geom_line(aes(y = beta_hat, color = "Estimated β(s)"), linewidth = 1) +
+  geom_line(aes(y = beta_hat, color = "Estimated β(s)"), linewidth = 0.8) +
   labs(x = "Seconds since light stimulus (s)", y = expression(beta(s)), title = "Estimated Coefficient Function β(s)", fill = "", color = "") +
   scale_fill_manual(values = c("Bootstrap 95% CI" = "#FDE725", "Wald 95% CI" = "#7AD151")) +
   scale_color_manual(values = c("Estimated β(s)" = "grey20")) +
@@ -193,9 +179,9 @@ smooth via **mgcv**.
   - `L`: quadrature weights (n × p) via the trapezoid rule
 - Fit a tensor-product smooth
   
-  $$
+  ``` r
     \texttt{ti(S, X, by = L, bs = basis, k = k, mc = (FALSE, TRUE))}
-  $$
+  ```
   
   where `mc = c(FALSE, TRUE)` imposes marginal identifiability constraints
   in the functional covariate direction.
