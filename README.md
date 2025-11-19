@@ -6,10 +6,12 @@
 An R package for **functional accelerated failure time (AFT) models**:
 
 - **Linear functional AFT (lfAFT)** with a functional predictor entering
-  as $\int_S X_i(s)\,\beta(s)\,ds$ and estimated via penalized splines.
+  as $$
+  \int_S X_i(s)\,\beta(s)\,ds
+  $$ and estimated via penalized splines.
 
 - **Additive functional AFT (afAFT)** where the functional predictor
-  enters as $\int_S F\{s, X(s)\}\, ds$ with an unknown bivariate
+  enters as $$\int_S F\{s, X(s)\}\, ds$$ with an unknown bivariate
   function $F(\cdot,\cdot)$, fitted using tensor-product smooths in
   **mgcv**.
 
@@ -60,10 +62,9 @@ You refer to functional columns either by explicit names
 
 The linear functional AFT model assumes
 
-<p align="center">
-
-$\log T_i = Z_i^\top \gamma + \int_S X_i(s)\,\beta(s)\,ds + \sigma \varepsilon_i,$
-</p>
+$$
+  \log T_i = Z_i^\top \gamma + \int_S X_i(s)\,\beta(s)\,ds + \sigma \varepsilon_i,
+$$
 
 with lognormal or loglogistic errors. The coefficient function
 $\beta(s)$ is represented using spline basis functions, and a roughness
