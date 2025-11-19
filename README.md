@@ -124,11 +124,11 @@ fit_lf<- fit_lfAFT(data = pupil, y = "time_since_use", delta = "is_user", x = "^
                     z = c("age_in_years", "bmi"), s_grid = sgrid, lambda_grid = lambda_grid, family = "loglogistic", se = TRUE)
 ```
 
-By specifying `boostrap = TRUE`, you can obtain bootstrap confidence
+By specifying `bootstrap = TRUE`, you can obtain bootstrap confidence
 intervals. By default use 500 bootstrap replicates (`B = 500`).
 
 ``` r
-# log-logistic lfAFT model with Wald and boostrap 95% CIs
+# log-logistic lfAFT model with Wald and bootstrap 95% CIs
 fit_lf_boot <- fit_lfAFT(data = pupil, y = "time_since_use", delta = "is_user", x = "^pct_chg_", x_as_regex = TRUE,
                     z = c("age_in_years", "bmi"), s_grid = sgrid, lambda_grid = lambda_grid, family = "loglogistic", 
                     se = TRUE, bootstrap = TRUE, B = 2000)
