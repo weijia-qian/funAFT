@@ -6,16 +6,22 @@
 An R package for **functional accelerated failure time (AFT) models**:
 
 - **Linear functional AFT (lfAFT)** with a functional predictor entering
-  as $$
+  as
+
+$$
   \int_S X_i(s) \beta(s) ds
-  $$ and estimated via penalized splines.
+$$
+
+and estimated via penalized splines.
 
 - **Additive functional AFT (afAFT)** where the functional predictor
   enters as
 
 $$
-  \int_S F\{s, X(s)\}  ds
-$$ with an unknown bivariate function $F(\cdot,\cdot)$, fitted using
+  \int_S F[s, X(s)]  ds
+$$
+
+with an unknown bivariate function $F(\cdot,\cdot)$, fitted using
 tensor-product smooths in **mgcv**.
 
 The package currently supports:
@@ -176,7 +182,7 @@ The additive functional AFT model allows the functional predictor to
 enter through a more flexible bivariate function:
 
 $$
-  \log T_i = Z_i^\top \gamma + \int_S F\{s, X_i(s)\} ds + \sigma \varepsilon_i,
+  \log T_i = Z_i^\top \gamma + \int_S F[s, X_i(s)] ds + \sigma \varepsilon_i,
 $$
 
 where $F(\cdot,\cdot)$ is unknown and estimated using a tensor-product
@@ -193,7 +199,7 @@ smooth via **mgcv**.
 - Fit a tensor-product smooth
 
   ``` r
-    \texttt{ti(S, X, by = L, bs = basis, k = k, mc = (FALSE, TRUE))}
+    ti(S, X, by = L, bs = basis, k = k, mc = (FALSE, TRUE))
   ```
 
   where `mc = c(FALSE, TRUE)` imposes marginal identifiability
