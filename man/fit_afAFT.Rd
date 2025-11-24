@@ -14,8 +14,7 @@ fit_afAFT(
   family = c("lognormal"),
   k = c(20, 20),
   s_grid = NULL,
-  basis = c("cr", "cr"),
-  basis_args = list()
+  basis = c("cr", "cr")
 )
 }
 \arguments{
@@ -41,6 +40,9 @@ discover matching columns or objects.
 
 \item{z}{Optional scalar covariates (may be \code{NULL}).  Typically a
 character vector of column/object names.}
+
+\item{family}{Character. Determines the error distribution of the AFT model;
+currently only support \code{"lognormal"}.}
 
 \item{k}{Integer vector of length 1 or 2. Basis dimensions for the
 tensor-product smooth \code{ti(S, X, ...)}; recycled to length 2 if a

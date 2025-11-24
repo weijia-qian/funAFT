@@ -29,6 +29,8 @@
 #'   \code{x} as a regex/prefix and discover matching functional columns.
 #' @param z Optional scalar covariates (may be \code{NULL}).  Typically a
 #'   character vector of column/object names.
+#' @param family Character. Determines the error distribution of the AFT model;
+#'   currently only support \code{"lognormal"}.
 #' @param s_grid Optional numeric vector giving the functional grid
 #'   \eqn{s_1,\ldots,s_{n_S}} (must match \code{ncol(X)}). If \code{NULL}, an
 #'   equally spaced grid on \[0, 1\] is used.
@@ -78,8 +80,7 @@ fit_afAFT <- function(data = NULL,
                       family = c("lognormal"),
                       k = c(20, 20),
                       s_grid = NULL,
-                      basis = c("cr", "cr"),
-                      basis_args = list()) {
+                      basis = c("cr", "cr")) {
 
   family <- match.arg(family)
 

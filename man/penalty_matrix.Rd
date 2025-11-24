@@ -19,7 +19,3 @@ A kp x kp penalty matrix
 \description{
 Function to construct the penalty matrix
 }
-\examples{
-Pen_block <- penalty_matrix(kp = 30, nS = 100, a = 0.001)
-
-}

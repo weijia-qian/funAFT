@@ -58,7 +58,7 @@
 #'   \item{\code{convergence, value, message}}{Optimizer diagnostics.}
 #' }
 #'
-#'
+#' @importFrom stats as.formula dnorm optim optimHess pnorm qnorm
 #' @examples
 #' # Example with synthetic data
 #' set.seed(1)

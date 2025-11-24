@@ -6,9 +6,8 @@
 #'
 #' @returns A kp x kp penalty matrix
 #'
-#' @examples
-#' Pen_block <- penalty_matrix(kp = 30, nS = 100, a = 0.001)
 #'
+
 penalty_matrix <- function(kp, nS, a){
   D <- nS
   s <- seq(0, 1, length.out = nS)
