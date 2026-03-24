@@ -28,9 +28,9 @@
 #'          \eqn{\beta(s)} (effective degrees of freedom for the functional coefficient).
 #' @param lambda Numeric; smoothing parameter controlling the penalty on
 #'               roughness of \eqn{\beta(s)}.
-#' @param basis Character; one of \code{c("bs", "ns")}. Determines the spline
-#'              basis type used for the functional coefficient. Defaults to
-#'              \code{"bs"} (B-spline).
+#' @param basis Character; determines the spline basis used for the
+#'                   functional coefficient. Accepts "bs", "ns", or mgcv bases
+#'                   like "cc", "cr", "ps". Defaults to \code{"bs"}.
 #' @param basis_args List of additional arguments passed to the spline basis
 #'                   constructor (e.g., \code{degree = 3} for \code{bs},
 #'                   or \code{intercept = FALSE}).
@@ -81,10 +81,9 @@
 
 
 fit_lfAFT_single_lambda <- function(data = NULL, y, delta,x, x_as_regex = FALSE, z = NULL, family = c("lognormal", "loglogistic"), s_grid = NULL,
-                      lambda, k = 20, basis = c("bs", "ns"), basis_args = list(), se = FALSE, bootstrap = FALSE, B = 500, boot_seed = NULL) {
+                      lambda, k = 20, basis = "bs", basis_args = list(), se = FALSE, bootstrap = FALSE, B = 500, boot_seed = NULL) {
 
   family <- match.arg(family)
-  basis  <- match.arg(basis)
 
   .env <- parent.frame()
   if (!is.null(data) && !.is_df(data)) stop("`data` must be a data.frame or NULL.")
@@ -132,17 +131,30 @@ fit_lfAFT_single_lambda <- function(data = NULL, y, delta,x, x_as_regex = FALSE,
     s <- as.numeric(s_grid)
   }
 
-  # ---- build bs/ns basis matrix on s (df = k) ----
-  if (basis == "bs") {
-    Bspl <- do.call(splines::bs, c(list(x = s, df = k), basis_args))
+  # ---- build basis matrix (Bspl) and Penalty block (Pen_block) ----
+  if (basis %in% c("bs", "ns")) {
+    if (basis == "bs") {
+      Bspl <- do.call(splines::bs, c(list(x = s, df = k), basis_args))
+    } else {
+      Bspl <- do.call(splines::ns, c(list(x = s, df = k), basis_args))
+    }
+    kb <- ncol(Bspl)
+    Pen_block <- penalty_matrix(kp = kb, s_grid = s, a = 0.001, basis = basis)
+
   } else {
-    Bspl <- do.call(splines::ns, c(list(x = s, df = k), basis_args))
+    require(mgcv)
+    sm_obj <- smoothCon(s(s, k = k, bs = basis),
+                        data = data.frame(s = s),
+                        absorb.cons = FALSE)[[1]]
+    Bspl <- sm_obj$X
+    kb <- ncol(Bspl)  # Update kb dynamically in case mgcv drops a dimension
+    Pen_block <- sm_obj$S[[1]]
+
+    # Add tiny ridge penalty a=0.001 to ensure positive definiteness
+    diag(Pen_block) <- diag(Pen_block) + 0.001
   }
-  kb <- ncol(Bspl)  # typically == k
 
   # ---- projected functional design (trapezoid weights) ----
-  # q <- (s[nS] - s[1]) / (nS - 1)     # quadrature weight
-  # X_mat <- X %*% Bspl * q         # n x kb
   d <- diff(s)
   w <- c(d[1]/2, (d[-length(d)] + d[-1])/2, d[length(d)]/2)
   Bs_w <- sweep(Bspl, 1, w, "*")  # apply weights to rows
@@ -194,7 +206,7 @@ fit_lfAFT_single_lambda <- function(data = NULL, y, delta,x, x_as_regex = FALSE,
     Z_names   = Z_names,
     X_names   = x_cols,
     s_grid    = s,
-    basis     = basis,
+    basis = basis,
     kbasis    = kb,
     convergence = fit$convergence,
     value        = fit$value,
