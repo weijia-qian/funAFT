@@ -9,7 +9,7 @@ compute_gcv(
   delta,
   C,
   mu_hat,
-  b_hat,
+  sigma_hat,
   lambda,
   Pen,
   family = c("lognormal", "loglogistic")
@@ -24,7 +24,7 @@ compute_gcv(
 
 \item{mu_hat}{Estimated linear predictor}
 
-\item{b_hat}{Estimated scale parameter}
+\item{sigma_hat}{Estimated scale parameter}
 
 \item{lambda}{A chosen nonnegative smoothing parameter}
 

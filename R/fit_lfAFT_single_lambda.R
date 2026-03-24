@@ -115,13 +115,21 @@ fit_lfAFT_single_lambda <- function(data = NULL, y, delta,x, x_as_regex = FALSE,
 
   # ---- Z (scalar) ----
   if (!is.null(z)) {
-    # Extract raw Z data
-    Z_raw <- .bind_cols(z, data = data, env = .env, required_n = n, label = "Z")
-
-    # Convert to data.frame to ensure factors/characters are recognized
-    Z_df <- as.data.frame(Z_raw)
+    # FIX: Bypass .bind_cols to safely handle factors/characters
+    if (!is.null(data) && all(z %in% names(data))) {
+      Z_df <- as.data.frame(data[, z, drop = FALSE])
+    } else {
+      # Fallback: search environment if data is not explicitly provided
+      Z_list <- lapply(z, function(val) {
+        if (exists(val, envir = .env)) return(get(val, envir = .env))
+        stop(sprintf("Object `%s` not found in data or environment.", val))
+      })
+      names(Z_list) <- z
+      Z_df <- as.data.frame(Z_list)
+    }
 
     # Generate numeric model matrix (dummy variables for categoricals)
+    # The '- 1' drops the intercept since we add our own later
     Z_mat <- model.matrix(~ . - 1, data = Z_df)
     Z_names <- colnames(Z_mat)
   } else {
@@ -210,6 +218,8 @@ fit_lfAFT_single_lambda <- function(data = NULL, y, delta,x, x_as_regex = FALSE,
     lambda    = lambda,
     Z_names   = Z_names,
     X_names   = x_cols,
+    x_input    = x,
+    x_as_regex = x_as_regex,
     s_grid    = s,
     basis = basis,
     kbasis    = kb,

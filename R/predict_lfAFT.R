@@ -73,14 +73,44 @@ predict_lfAFT <- function(fit,
     stop("`fit$X_names` is NULL; cannot locate functional covariates in `newdata`.")
   }
 
-  # ---- extract new functional covariates by name ----
+  # ---- extract new functional covariates ----
   X_names <- fit$X_names
-  if (!all(X_names %in% names(newdata))) {
+  X_new <- NULL
+
+  # Scenario 1: The model remembers it was an 'AsIs' matrix (like "MIMS")
+  if (!is.null(fit$x_input) && length(fit$x_input) == 1 && !isTRUE(fit$x_as_regex) && fit$x_input %in% names(newdata)) {
+    X_raw <- newdata[[fit$x_input]]
+    if (is.matrix(X_raw) || is.data.frame(X_raw)) {
+      X_new <- as.matrix(X_raw)
+    }
+  }
+
+  # Scenario 2: Standard column matching (if they exist directly in newdata)
+  if (is.null(X_new) && all(X_names %in% names(newdata))) {
+    X_new <- as.matrix(newdata[, X_names, drop = FALSE])
+  }
+
+  # Scenario 3: Failsafe - Hunt for an embedded AsIs matrix with matching dimensions
+  if (is.null(X_new)) {
+    # Find columns in newdata that are actually nested matrices
+    matrix_cols <- names(newdata)[sapply(newdata, function(col) is.matrix(col) || is.data.frame(col))]
+
+    for (mcol in matrix_cols) {
+      inner_mat <- as.matrix(newdata[[mcol]])
+      # If this inner matrix has the exact same number of columns as the training grid, use it
+      if (ncol(inner_mat) == length(X_names)) {
+        X_new <- inner_mat
+        break
+      }
+    }
+  }
+
+  # If all 3 scenarios fail, throw the error
+  if (is.null(X_new)) {
     missing <- X_names[!X_names %in% names(newdata)]
-    stop("The following functional covariate columns are missing in `newdata`: ",
+    stop("The following functional covariate columns are missing in `newdata`, and no matching 'AsIs' matrix was found: ",
          paste(missing, collapse = ", "))
   }
-  X_new <- as.matrix(newdata[, X_names, drop = FALSE])
 
   beta0 <- fit$beta0_hat
   betaX <- fit$betaX_hat     # estimated beta(s) on s_grid
@@ -126,16 +156,27 @@ predict_lfAFT <- function(fit,
       stop("Scalar covariates were estimated, but `fit$Z_names` is NULL.")
     }
 
-    # Extract non-functional columns to build the dummy matrix
+    # Coerce to dataframe
     nd_df <- as.data.frame(newdata)
-    Z_candidates <- nd_df[, !names(nd_df) %in% X_names, drop = FALSE]
+
+    # FIX: Safely extract scalar candidates by dropping any nested matrices (like 'MIMS')
+    # and dropping any explicit functional column names if they exist.
+    is_1d_column <- sapply(nd_df, function(col) is.atomic(col) && !is.matrix(col))
+    Z_candidates <- nd_df[, is_1d_column, drop = FALSE]
+    Z_candidates <- Z_candidates[, !names(Z_candidates) %in% X_names, drop = FALSE]
 
     if (ncol(Z_candidates) == 0) {
-      stop("newdata contains no scalar covariate columns.")
+      stop("newdata contains no valid scalar covariate columns.")
     }
+
+    # Temporarily override R's global NA behavior to force it to keep NA rows
+    old_na <- options(na.action = "na.pass")
 
     # Convert candidates to numeric dummy matrix
     Z_full_mat <- model.matrix(~ . - 1, data = Z_candidates)
+
+    # Instantly restore the original global NA behavior so we don't break other functions
+    options(old_na)
 
     # Safely align columns (handles missing factor levels in the test fold)
     missing_cols <- setdiff(Z_names, colnames(Z_full_mat))
