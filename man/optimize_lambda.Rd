@@ -15,7 +15,7 @@ optimize_lambda(
   family = c("lognormal", "loglogistic"),
   k = 20,
   s_grid = NULL,
-  basis = c("bs", "ns"),
+  basis = "bs",
   basis_args = list()
 )
 }
@@ -55,9 +55,9 @@ Determines the error distribution of the AFT model.}
 functional measurement points (\code{ncol(X)}). If \code{NULL},
 assumes an equally spaced grid over [0, 1].}
 
-\item{basis}{Character; one of \code{c("bs", "ns")}. Determines the spline
-basis type used for the functional coefficient. Defaults to
-\code{"bs"} (B-spline).}
+\item{basis}{Character; determines the spline basis used for the
+functional coefficient. Accepts "bs", "ns", or mgcv bases
+like "cc", "cr", "ps". Defaults to \code{"bs"}.}
 
 \item{basis_args}{List of additional arguments passed to the spline basis
 constructor (e.g., \code{degree = 3} for \code{bs},

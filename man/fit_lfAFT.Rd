@@ -15,7 +15,7 @@ fit_lfAFT(
   k = 20,
   lambda_grid = exp(seq(log(1000), log(10000), length.out = 100)),
   s_grid = NULL,
-  basis = c("bs", "ns"),
+  basis = "bs",
   basis_args = list(),
   se = FALSE,
   bootstrap = FALSE,
@@ -61,9 +61,9 @@ score for each value and selects the one minimizing GCV.}
 functional measurement points (\code{ncol(X)}). If \code{NULL},
 assumes an equally spaced grid over [0, 1].}
 
-\item{basis}{Character; one of \code{c("bs", "ns")}. Determines the spline
-basis type used for the functional coefficient. Defaults to
-\code{"bs"} (B-spline).}
+\item{basis}{Character; determines the spline basis used for the
+functional coefficient. Accepts "bs", "ns", or mgcv bases
+like "cc", "cr", "ps". Defaults to \code{"bs"}.}
 
 \item{basis_args}{List of additional arguments passed to the spline basis
 constructor (e.g., \code{degree = 3} for \code{bs},

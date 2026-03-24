@@ -4,7 +4,7 @@
 \alias{penalty_matrix}
 \title{Function to construct the penalty matrix}
 \usage{
-penalty_matrix(kp, nS, a)
+penalty_matrix(kp, nS, a, basis = "bs")
 }
 \arguments{
 \item{kp}{Number of basis coefficients}
@@ -12,6 +12,8 @@ penalty_matrix(kp, nS, a)
 \item{nS}{Density of the grid}
 
 \item{a}{Parameter to ensure the penalty matrix is full rank (a < 0.01)}
+
+\item{basis}{Character string specifying the basis type (e.g., "bs", "ns", "cc", "cr"). Defaults to "bs".}
 }
 \value{
 A kp x kp penalty matrix

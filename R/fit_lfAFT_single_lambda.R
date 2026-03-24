@@ -139,8 +139,7 @@ fit_lfAFT_single_lambda <- function(data = NULL, y, delta,x, x_as_regex = FALSE,
       Bspl <- do.call(splines::ns, c(list(x = s, df = k), basis_args))
     }
     kb <- ncol(Bspl)
-    Pen_block <- penalty_matrix(kp = kb, s_grid = s, a = 0.001, basis = basis)
-
+    Pen_block <- penalty_matrix(kp = kb, nS = nS, a = 0.001, basis = basis)
   } else {
     require(mgcv)
     sm_obj <- smoothCon(s(s, k = k, bs = basis),

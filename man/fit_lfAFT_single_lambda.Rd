@@ -15,7 +15,7 @@ fit_lfAFT_single_lambda(
   s_grid = NULL,
   lambda,
   k = 20,
-  basis = c("bs", "ns"),
+  basis = "bs",
   basis_args = list(),
   se = FALSE,
   bootstrap = FALSE,
@@ -58,9 +58,9 @@ roughness of \eqn{\beta(s)}.}
 \item{k}{Integer; number of spline basis functions used to represent
 \eqn{\beta(s)} (effective degrees of freedom for the functional coefficient).}
 
-\item{basis}{Character; one of \code{c("bs", "ns")}. Determines the spline
-basis type used for the functional coefficient. Defaults to
-\code{"bs"} (B-spline).}
+\item{basis}{Character; determines the spline basis used for the
+functional coefficient. Accepts "bs", "ns", or mgcv bases
+like "cc", "cr", "ps". Defaults to \code{"bs"}.}
 
 \item{basis_args}{List of additional arguments passed to the spline basis
 constructor (e.g., \code{degree = 3} for \code{bs},

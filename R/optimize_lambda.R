@@ -29,9 +29,9 @@
 #' @param s_grid Optional numeric vector of the same length as the number of
 #'               functional measurement points (\code{ncol(X)}). If \code{NULL},
 #'               assumes an equally spaced grid over \[0, 1\].
-#' @param basis Character; one of \code{c("bs", "ns")}. Determines the spline
-#'              basis type used for the functional coefficient. Defaults to
-#'              \code{"bs"} (B-spline).
+#' @param basis Character; determines the spline basis used for the
+#'                   functional coefficient. Accepts "bs", "ns", or mgcv bases
+#'                   like "cc", "cr", "ps". Defaults to \code{"bs"}.
 #' @param basis_args List of additional arguments passed to the spline basis
 #'                   constructor (e.g., \code{degree = 3} for \code{bs},
 #'                   or \code{intercept = FALSE}).
@@ -79,11 +79,10 @@ optimize_lambda <- function(lambda_grid,
                             family = c("lognormal", "loglogistic"),
                             k = 20,
                             s_grid = NULL,
-                            basis = c("bs", "ns"),
+                            basis = "bs",
                             basis_args = list()) {
 
   family <- match.arg(family)
-  basis  <- match.arg(basis)
 
   if (!is.numeric(lambda_grid) || length(lambda_grid) < 1L)
     stop("`lambda_grid` must be a non-empty numeric vector.")
