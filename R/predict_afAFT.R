@@ -75,7 +75,6 @@ predict_afAFT <- function(fit,
   if (is.null(fit$X_names) || is.null(fit$s_grid)) {
     stop("`fit` does not appear to be a valid afAFT fit (missing X_names or s_grid).")
   }
-  family_name <- fit$family_name
 
   # Coerce newdata to data.frame for safe subsetting/augmentation
   newdata <- as.data.frame(newdata)

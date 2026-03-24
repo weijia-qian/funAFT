@@ -115,7 +115,14 @@ fit_lfAFT_single_lambda <- function(data = NULL, y, delta,x, x_as_regex = FALSE,
 
   # ---- Z (scalar) ----
   if (!is.null(z)) {
-    Z_mat <- .bind_cols(z, data = data, env = .env, required_n = n, label = "Z")
+    # Extract raw Z data
+    Z_raw <- .bind_cols(z, data = data, env = .env, required_n = n, label = "Z")
+
+    # Convert to data.frame to ensure factors/characters are recognized
+    Z_df <- as.data.frame(Z_raw)
+
+    # Generate numeric model matrix (dummy variables for categoricals)
+    Z_mat <- model.matrix(~ . - 1, data = Z_df)
     Z_names <- colnames(Z_mat)
   } else {
     Z_mat <- NULL
@@ -165,7 +172,6 @@ fit_lfAFT_single_lambda <- function(data = NULL, y, delta,x, x_as_regex = FALSE,
 
   # ---- penalty matrix on functional block ----
   Pen <- matrix(0, nrow = p, ncol = p)
-  Pen_block <- penalty_matrix(kp = kb, nS = nS, a = 0.001)
   Pen[(2 + nZ):p, (2 + nZ):p] <- Pen_block
 
   # ---- optimization ----

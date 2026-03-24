@@ -125,12 +125,30 @@ predict_lfAFT <- function(fit,
     if (is.null(Z_names)) {
       stop("Scalar covariates were estimated, but `fit$Z_names` is NULL.")
     }
-    if (!all(Z_names %in% names(newdata))) {
-      missing <- Z_names[!Z_names %in% names(newdata)]
-      stop("The following scalar covariates are missing in `newdata`: ",
-           paste(missing, collapse = ", "))
+
+    # Extract non-functional columns to build the dummy matrix
+    nd_df <- as.data.frame(newdata)
+    Z_candidates <- nd_df[, !names(nd_df) %in% X_names, drop = FALSE]
+
+    if (ncol(Z_candidates) == 0) {
+      stop("newdata contains no scalar covariate columns.")
     }
-    Z_mat <- as.matrix(newdata[, Z_names, drop = FALSE])
+
+    # Convert candidates to numeric dummy matrix
+    Z_full_mat <- model.matrix(~ . - 1, data = Z_candidates)
+
+    # Safely align columns (handles missing factor levels in the test fold)
+    missing_cols <- setdiff(Z_names, colnames(Z_full_mat))
+    if (length(missing_cols) > 0) {
+      for (col in missing_cols) {
+        Z_full_mat <- cbind(Z_full_mat, 0)
+        colnames(Z_full_mat)[ncol(Z_full_mat)] <- col
+      }
+    }
+
+    # Ensure exact column order and drop extra variables
+    Z_mat <- Z_full_mat[, Z_names, drop = FALSE]
+
     functional_part <- as.vector(X_new %*% beta_w)
     mu_new <- as.vector(beta0 + Z_mat %*% betaZ + functional_part)
   } else {
@@ -144,8 +162,6 @@ predict_lfAFT <- function(fit,
     pred <- mu_new
 
   } else if (type == "response") {
-    # For both lognormal and loglogistic AFT parameterizations, exp(mu)
-    # corresponds to the median survival time on the original time scale.
     pred <- exp(mu_new)
 
   } else {  # type == "survival"

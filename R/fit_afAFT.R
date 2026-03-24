@@ -117,8 +117,14 @@ fit_afAFT <- function(data = NULL,
 
   # ---- Z (scalar) ----
   if (!is.null(z)) {
-    Z_mat <- .bind_cols(z, data = data, env = .env,
-                        required_n = n, label = "Z")
+    # Extract raw Z data
+    Z_raw <- .bind_cols(z, data = data, env = .env, required_n = n, label = "Z")
+
+    # Convert to data.frame to ensure factors/characters are recognized
+    Z_df <- as.data.frame(Z_raw)
+
+    # Generate numeric model matrix (dummy variables for categoricals)
+    Z_mat <- model.matrix(~ . - 1, data = Z_df)
     Z_names <- colnames(Z_mat)
   } else {
     Z_mat <- NULL
